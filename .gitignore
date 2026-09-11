@@ -3,7 +3,6 @@
 .vscode/
 
 # Binaries
-stream-tui
 *.exe
 *.exe~
 *.dll
