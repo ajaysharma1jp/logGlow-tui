@@ -1,0 +1,20 @@
+# IDE
+.idea/
+.vscode/
+
+# Binaries
+stream-tui
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary
+*.test
+
+# Go workspace file
+go.work
+
+# OS specific files
+.DS_Store
