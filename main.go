@@ -1,6 +1,11 @@
 package main
 
-import tea "github.com/charmbracelet/bubbletea"
+import (
+	"fmt"
+	"os"
+
+	tea "github.com/charmbracelet/bubbletea"
+)
 
 type model struct {
 }
@@ -29,5 +34,8 @@ func (m model) View() string {
 }
 
 func main() {
-
+	if err := ingest(); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
 }

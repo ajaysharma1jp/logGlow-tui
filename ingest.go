@@ -8,24 +8,25 @@ import (
 
 // file responsible for only ingestion
 
-func checkInfoPipe() {
-	// for file info
+func checkInfoPipe() error {
 	info, err := os.Stdin.Stat()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error getting Stdin info: %s\n", err)
-		os.Exit(1)
+		return fmt.Errorf("Error getting Stdin info: %w\n", err)
 	}
 
 	// for character device (terminal) vs pipe
 	if info.Mode()&os.ModeCharDevice != 0 {
-		fmt.Println("No Data Piped!\nUsage: echo 'Sample' | go run ingest.go")
-		os.Exit(1)
+		return fmt.Errorf("No Data Piped!\nUsage: echo 'Sample' | go run ingest.go")
 	}
 
+	return nil
 }
 
-func ingest() {
-	checkInfoPipe()
+func ingest() error {
+	if err := checkInfoPipe(); err != nil {
+		return err
+	}
+
 	fmt.Println("Ingesting...")
 	// make a scanner obj of bufio
 	scanner := bufio.NewScanner(os.Stdin)
@@ -35,13 +36,8 @@ func ingest() {
 	}
 
 	if err := scanner.Err(); err != nil {
-		fmt.Fprintln(os.Stderr, "Error in reading standard input: ", err)
-		os.Exit(1)
+		return fmt.Errorf("Error in reading standard input: %w\n", err)
 	}
 
-	os.Exit(0)
-}
-
-func main() {
-	ingest()
+	return nil
 }
