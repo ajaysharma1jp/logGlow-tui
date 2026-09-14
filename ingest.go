@@ -3,41 +3,21 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"os"
+	"io"
 )
 
-// file responsible for only ingestion
-
-func checkInfoPipe() error {
-	info, err := os.Stdin.Stat()
-	if err != nil {
-		return fmt.Errorf("Error getting Stdin info: %w\n", err)
-	}
-
-	// for character device (terminal) vs pipe
-	if info.Mode()&os.ModeCharDevice != 0 {
-		return fmt.Errorf("No Data Piped!\nUsage: echo 'Sample' | go run ingest.go")
-	}
-
-	return nil
-}
-
-func ingest() error {
-	if err := checkInfoPipe(); err != nil {
-		return err
-	}
+func ingest(reader io.Reader, outputChan chan<- string) error {
+	defer close(outputChan)
 
 	fmt.Println("Ingesting...")
-	// make a scanner obj of bufio
-	scanner := bufio.NewScanner(os.Stdin)
+	scanner := bufio.NewScanner(reader)
 	for scanner.Scan() {
 		text := scanner.Text()
-		fmt.Printf("Ingested: %s\n", text)
+		outputChan <- text
 	}
 
 	if err := scanner.Err(); err != nil {
 		return fmt.Errorf("Error in reading standard input: %w\n", err)
 	}
-
 	return nil
 }
