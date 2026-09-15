@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 
@@ -56,9 +57,11 @@ func main() {
 	linesChan := make(chan string)
 	errorsChan := make(chan error, 1)
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	// a goroutine(background worker for ingest)
 	go func() {
-		if err := ingest(os.Stdin, linesChan); err != nil {
+		if err := ingest(ctx, os.Stdin, linesChan); err != nil {
 			errorsChan <- err
 		}
 	}()
