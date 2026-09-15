@@ -9,7 +9,6 @@ import (
 func ingest(reader io.Reader, outputChan chan<- string) error {
 	defer close(outputChan)
 
-	fmt.Println("Ingesting...")
 	scanner := bufio.NewScanner(reader)
 	for scanner.Scan() {
 		text := scanner.Text()
@@ -17,7 +16,7 @@ func ingest(reader io.Reader, outputChan chan<- string) error {
 	}
 
 	if err := scanner.Err(); err != nil {
-		return fmt.Errorf("Error in reading standard input: %w\n", err)
+		return fmt.Errorf("Error in reading standard input: %w", err)
 	}
 	return nil
 }

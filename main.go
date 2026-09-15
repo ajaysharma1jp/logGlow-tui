@@ -36,7 +36,7 @@ func (m model) View() string {
 func checkInfoPipe() error {
 	info, err := os.Stdin.Stat()
 	if err != nil {
-		return fmt.Errorf("Error getting Stdin info: %w\n", err)
+		return fmt.Errorf("Error getting Stdin info: %w", err)
 	}
 
 	// for character device (terminal) vs pipe
@@ -63,7 +63,7 @@ func main() {
 		}
 	}()
 
-	// main thread('range' conti. read from channgel until close(outChar)' called
+	// main thread('range' conti. read from channel until close(outChar)' called
 	for line := range linesChan {
 		fmt.Println(line)
 	}
