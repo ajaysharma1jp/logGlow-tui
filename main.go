@@ -9,10 +9,11 @@ import (
 )
 
 type model struct {
+	cancel context.CancelFunc
 }
 
-func initialModel() model {
-	return model{}
+func initialModel(c context.CancelFunc) model {
+	return model{cancel: c}
 }
 
 func (m model) Init() tea.Cmd {
@@ -24,6 +25,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "ctrl+c", "q":
+
+			if m.cancel != nil {
+				m.cancel()
+			}
 			return m, tea.Quit
 		}
 	}
