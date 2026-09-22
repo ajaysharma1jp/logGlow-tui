@@ -64,10 +64,18 @@ func main() {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+
 	// a goroutine(background worker for ingest)
 	go func() {
 		if err := ingest(ctx, os.Stdin, linesChan); err != nil {
 			errorsChan <- err
+		}
+	}()
+
+	// silenty consumes data inroder to make channel never blocks
+	go func(){
+		for range linesChan{
+
 		}
 	}()
 
