@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 
@@ -8,10 +9,11 @@ import (
 )
 
 type model struct {
+	cancel context.CancelFunc
 }
 
-func initialModel() model {
-	return model{}
+func initialModel(c context.CancelFunc) model {
+	return model{cancel: c}
 }
 
 func (m model) Init() tea.Cmd {
@@ -23,6 +25,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "ctrl+c", "q":
+
+			if m.cancel != nil {
+				m.cancel()
+			}
 			return m, tea.Quit
 		}
 	}
@@ -56,25 +62,28 @@ func main() {
 	linesChan := make(chan string)
 	errorsChan := make(chan error, 1)
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	// a goroutine(background worker for ingest)
 	go func() {
-		if err := ingest(os.Stdin, linesChan); err != nil {
+		if err := ingest(ctx, os.Stdin, linesChan); err != nil {
 			errorsChan <- err
 		}
 	}()
 
-	// main thread('range' conti. read from channel until close(outChar)' called
-	for line := range linesChan {
-		fmt.Println(line)
-	}
+	// silenty consumes data inroder to make channel never blocks
+	go func(){
+		for range linesChan{
 
-	// check for background worker reported error before closing
-	select {
-	case err := <-errorsChan:
-		fmt.Fprintf(os.Stderr, "Background ingest failed: %v\n", err)
+		}
+	}()
+
+	// Bubble Tea UI controls the foreground loop; stdin ingest runs in the background.
+	m := initialModel(cancel)
+	p := tea.NewProgram(m)
+	if _, err := p.Run(); err != nil {
+		fmt.Fprintf(os.Stderr, "Error running program: %v\n", err)
 		os.Exit(1)
-	default:
-		// no error in channel exit cleanly
 	}
-
 }
