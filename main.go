@@ -71,20 +71,7 @@ func main() {
 		}
 	}()
 
-	//// main thread('range' conti. read from channel until close(outChar)' called
-	//for line := range linesChan {
-	//	fmt.Println(line)
-	//}
-
-	//// check for background worker reported error before closing
-	//select {
-	//case err := <-errorsChan:
-	//	fmt.Fprintf(os.Stderr, "Background ingest failed: %v\n", err)
-	//	os.Exit(1)
-	//default:
-	//	// no error in channel exit cleanly
-	//}
-
+	// Bubble Tea UI controls the foreground loop; stdin ingest runs in the background.
 	m := initialModel(cancel)
 	p := tea.NewProgram(m)
 	if _, err := p.Run(); err != nil {
