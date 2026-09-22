@@ -9,8 +9,23 @@ import (
 
 func ingest(ctx context.Context, reader io.Reader, outputChan chan<- string) error {
 	defer close(outputChan)
+	done := make(chan struct{})
+	defer close(done)
 
 	scanner := bufio.NewScanner(reader)
+
+	
+	go func(){
+		select{
+		case <-ctx.Done():
+			if closer, ok := reader.(io.Closer); ok{
+				closer.Close()
+			}
+		case <-done:
+			return
+		}
+	}()
+
 	for scanner.Scan() {
 		text := scanner.Text()
 		select {
