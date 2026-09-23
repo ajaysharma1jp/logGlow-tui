@@ -4,39 +4,89 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 
+	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-type model struct {
-	cancel context.CancelFunc
+type logMsg string
+
+func waitForLog(ch chan string) tea.Cmd {
+	return func() tea.Msg {
+		line, ok := <-ch
+		if !ok {
+			return nil
+		}
+		return logMsg(line)
+	}
 }
 
-func initialModel(c context.CancelFunc) model {
-	return model{cancel: c}
+type model struct {
+	cancel    context.CancelFunc
+	linesChan chan string // channel for logs
+	logs      []string    // list for logs
+	ready     bool
+	vp        viewport.Model
+}
+
+func initialModel(c context.CancelFunc, ch chan string) model {
+	return model{
+		cancel:    c,
+		linesChan: ch,
+		logs:      []string{},
+	}
 }
 
 func (m model) Init() tea.Cmd {
-	return nil
+	return waitForLog(m.linesChan)
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmd tea.Cmd // capture commands from view port
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "ctrl+c", "q":
-
 			if m.cancel != nil {
 				m.cancel()
 			}
 			return m, tea.Quit
 		}
+	case tea.WindowSizeMsg: // buuble tea used for knowing terminal size
+		if !m.ready {
+			// first time setup: create viewport (fit screen)
+			m.vp = viewport.New(msg.Width, msg.Height-4)
+			m.ready = true
+		} else {
+			// for resize window, adjust viewport
+			m.vp.Width = msg.Width
+			m.vp.Height = msg.Height - 4
+		}
+	case logMsg:
+		m.logs = append(m.logs, string(msg))
+		m.vp.SetContent(strings.Join(m.logs, "\n"))
+		m.vp.GotoBottom() // auto scroll bottom to see newest log
+		return m, waitForLog(m.linesChan)
 	}
-	return m, nil
+
+	// for message wasn't 'q' or log(like arrow keys or mouse scrolls) give it to vp for handling scrolling
+	m.vp, cmd = m.vp.Update(msg)
+	return m, cmd
 }
 
 func (m model) View() string {
-	return "\n  logGlow-tui initializing...\n\n  Press 'q' or 'ctrl+c' to quit.\n"
+	if !m.ready {
+		return "\n Initializing...\n"
+	}
+	s := "\n logGlow-tui logs:\n"
+	s += "--------------------\n"
+
+	s += m.vp.View()
+
+	s += "\n--------------------------------------------------------\n"
+	s += " Press 'q' or 'ctrl+c' to quit.\n"
+	return s
 }
 
 func checkInfoPipe() error {
@@ -72,15 +122,8 @@ func main() {
 		}
 	}()
 
-	// silenty consumes data inroder to make channel never blocks
-	go func(){
-		for range linesChan{
-
-		}
-	}()
-
 	// Bubble Tea UI controls the foreground loop; stdin ingest runs in the background.
-	m := initialModel(cancel)
+	m := initialModel(cancel, linesChan)
 	p := tea.NewProgram(m)
 	if _, err := p.Run(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error running program: %v\n", err)
