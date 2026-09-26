@@ -7,16 +7,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
-)
-
-var (
-	errorStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#FF0000")).Bold(true)
-	warnStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFA500"))
-	infoStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("#00FF00"))
-	debugStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#808080"))
 )
 
 type logMsg string
@@ -29,26 +20,6 @@ func waitForLog(ch chan string) tea.Cmd {
 		}
 		return logMsg(line)
 	}
-}
-
-type model struct {
-	cancel    context.CancelFunc
-	linesChan chan string // channel for logs
-	logs      []string    // list for logs
-	ready     bool
-	vp        viewport.Model
-}
-
-func initialModel(c context.CancelFunc, ch chan string) model {
-	return model{
-		cancel:    c,
-		linesChan: ch,
-		logs:      []string{},
-	}
-}
-
-func (m model) Init() tea.Cmd {
-	return waitForLog(m.linesChan)
 }
 
 func FormatLogLine(line string) string {
@@ -77,63 +48,6 @@ func FormatLogLine(line string) string {
 		}
 	}
 	return line
-}
-
-func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	var cmd tea.Cmd // capture commands from view port
-	switch msg := msg.(type) {
-	case tea.KeyMsg:
-		switch msg.String() {
-		case "ctrl+c", "q":
-			if m.cancel != nil {
-				m.cancel()
-			}
-			return m, tea.Quit
-		}
-	case tea.WindowSizeMsg: // buuble tea used for knowing terminal size
-		if !m.ready {
-			// first time setup: create viewport (fit screen)
-			m.vp = viewport.New(msg.Width, msg.Height-6)
-			// restore those logs which arrived before screen was ready
-			m.vp.SetContent(strings.Join(m.logs, "\n"))
-			m.vp.GotoBottom()
-			m.ready = true
-		} else {
-			// for resize window, adjust viewport
-			m.vp.Width = msg.Width
-			m.vp.Height = msg.Height - 6
-		}
-	case logMsg:
-		formattedLine := FormatLogLine(string(msg))
-		m.logs = append(m.logs, formattedLine)
-		if len(m.logs) > 10000 {
-			m.logs = m.logs[1:]
-		}
-		m.vp.SetContent(strings.Join(m.logs, "\n"))
-		m.vp.GotoBottom() // auto scroll bottom to see newest log
-		return m, waitForLog(m.linesChan)
-	}
-
-	// for message wasn't 'q' or log(like arrow keys or mouse scrolls) give it to vp for handling scrolling
-	m.vp, cmd = m.vp.Update(msg)
-	return m, cmd
-}
-
-func (m model) View() string {
-	if !m.ready {
-		return "\n Initializing...\n"
-	}
-
-	headerStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#00FFFF")).Bold(true)
-	header := headerStyle.Render("\n LogGlow-tui: Live Logs\n")
-
-	s := header
-	s += "--------------------\n"
-	s += m.vp.View()
-
-	s += "\n--------------------------------------------------------\n"
-	s += " Press 'q' or 'ctrl+c' to quit.\n"
-	return s
 }
 
 func checkInfoPipe() error {
