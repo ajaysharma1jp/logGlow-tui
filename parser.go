@@ -37,7 +37,7 @@ func styleLogLine(entry LogEntry) string {
 	case "error", "fatal", "err":
 		return errorStyle.Render(entry.RawText)
 	case "warn", "warning":
-		return errorStyle.Render(entry.RawText)
+		return warnStyle.Render(entry.RawText)
 	case "info":
 		return infoStyle.Render(entry.RawText)
 	case "debug":
