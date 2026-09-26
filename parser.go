@@ -34,7 +34,7 @@ func parseLogLine(line string) LogEntry {
 
 func styleLogLine(entry LogEntry) string {
 	switch entry.Level {
-	case "error", "fetal", "err":
+	case "error", "fatal", "err":
 		return errorStyle.Render(entry.RawText)
 	case "warn", "warning":
 		return errorStyle.Render(entry.RawText)
