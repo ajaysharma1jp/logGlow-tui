@@ -72,6 +72,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.searchInput.Blur()
 			default:
 				m.searchInput, cmd = m.searchInput.Update(msg) // pass all other keystroke to text input bubble
+				m.vp.SetContent(m.getVisibleLogs())
+				m.vp.GotoBottom()
 				return m, cmd
 			}
 		} else {
