@@ -51,23 +51,23 @@ func (m model) Init() tea.Cmd {
 	return waitForLog(m.linesChan)
 }
 
-func FormatLogLine(line string) string{
+func FormatLogLine(line string) string {
 	var logData map[string]interface{}
 
 	// attempt to unmarshal to see if its structured JSON
 	err := json.Unmarshal([]byte(line), &logData)
-	if(err != nil){
-		return line // retuns as plain text not json
+	if err != nil {
+		return line // retruns as plain text not json
 	}
 
 	// extract level
-	if levelVal, exits := logData["level"]; exits{
-		levelStr,ok:=levelVal.(string)
-		if ok{
-			switch strings.ToLower(levelStr){
-			case "error","fatel","err":
+	if levelVal, exits := logData["level"]; exits {
+		levelStr, ok := levelVal.(string)
+		if ok {
+			switch strings.ToLower(levelStr) {
+			case "error", "fatel", "err":
 				return errorStyle.Render(line)
-			case "warn","warning":
+			case "warn", "warning":
 				return warnStyle.Render(line)
 			case "info":
 				return infoStyle.Render(line)
@@ -95,7 +95,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// first time setup: create viewport (fit screen)
 			m.vp = viewport.New(msg.Width, msg.Height-6)
 			// restore those logs which arrived before screen was ready
-			m.vp.SetContent(strings.Join(m.logs,"\n"))
+			m.vp.SetContent(strings.Join(m.logs, "\n"))
 			m.vp.GotoBottom()
 			m.ready = true
 		} else {
@@ -106,8 +106,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case logMsg:
 		formattedLine := FormatLogLine(string(msg))
 		m.logs = append(m.logs, formattedLine)
-		if len(m.logs)>10000{
-			m.logs = m.logs[1:] 
+		if len(m.logs) > 10000 {
+			m.logs = m.logs[1:]
 		}
 		m.vp.SetContent(strings.Join(m.logs, "\n"))
 		m.vp.GotoBottom() // auto scroll bottom to see newest log
@@ -123,10 +123,10 @@ func (m model) View() string {
 	if !m.ready {
 		return "\n Initializing...\n"
 	}
-	
+
 	headerStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#00FFFF")).Bold(true)
 	header := headerStyle.Render("\n LogGlow-tui: Live Logs\n")
-	
+
 	s := header
 	s += "--------------------\n"
 	s += m.vp.View()
@@ -171,7 +171,7 @@ func main() {
 
 	// Bubble Tea UI controls the foreground loop; stdin ingest runs in the background.
 	m := initialModel(cancel, linesChan)
-	p := tea.NewProgram(m,tea.WithAltScreen())
+	p := tea.NewProgram(m, tea.WithAltScreen())
 	if _, err := p.Run(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error running program: %v\n", err)
 		os.Exit(1)
