@@ -46,8 +46,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		headerHeight := 3
 		footerHeight := 3
 		borderOffset := 4
-		vpHeight := msg.Height - headerHeight - footerHeight - borderOffset
-		vpWidth := msg.Width - borderOffset
+		vpHeight := max(0, msg.Height-headerHeight-footerHeight-borderOffset)
+		vpWidth := max(0, msg.Width-borderOffset)
 		if !m.ready {
 			m.vp = viewport.New(vpWidth, vpHeight)
 			// restore those logs which arrived before screen was ready

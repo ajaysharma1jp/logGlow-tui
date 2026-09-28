@@ -2,10 +2,8 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
-	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -20,34 +18,6 @@ func waitForLog(ch chan string) tea.Cmd {
 		}
 		return logMsg(line)
 	}
-}
-
-func FormatLogLine(line string) string {
-	var logData map[string]interface{}
-
-	// attempt to unmarshal to see if its structured JSON
-	err := json.Unmarshal([]byte(line), &logData)
-	if err != nil {
-		return line // retruns as plain text not json
-	}
-
-	// extract level
-	if levelVal, exits := logData["level"]; exits {
-		levelStr, ok := levelVal.(string)
-		if ok {
-			switch strings.ToLower(levelStr) {
-			case "error", "fatel", "err":
-				return errorStyle.Render(line)
-			case "warn", "warning":
-				return warnStyle.Render(line)
-			case "info":
-				return infoStyle.Render(line)
-			case "debug":
-				return debugStyle.Render(line)
-			}
-		}
-	}
-	return line
 }
 
 func checkInfoPipe() error {
