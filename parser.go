@@ -3,15 +3,6 @@ package main
 import (
 	"encoding/json"
 	"strings"
-
-	"github.com/charmbracelet/lipgloss"
-)
-
-var (
-	errorStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#FF0000")).Bold(true)
-	warnStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFA500"))
-	infoStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("#00FF00"))
-	debugStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#808080"))
 )
 
 type LogEntry struct {

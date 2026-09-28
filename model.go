@@ -43,17 +43,20 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
+		headerHeight := 3
+		footerHeight := 3
+		borderOffset := 4
+		vpHeight := max(0, msg.Height-headerHeight-footerHeight-borderOffset)
+		vpWidth := max(0, msg.Width-borderOffset)
 		if !m.ready {
-			// first time setup: create viewport (fit screen)
-			m.vp = viewport.New(msg.Width, msg.Height-6)
+			m.vp = viewport.New(vpWidth, vpHeight)
 			// restore those logs which arrived before screen was ready
 			m.vp.SetContent(m.getVisibleLogs())
 			m.vp.GotoBottom()
 			m.ready = true
 		} else {
-			// for resize window, adjust viewport
-			m.vp.Width = msg.Width
-			m.vp.Height = msg.Height - 6
+			m.vp.Width = vpWidth
+			m.vp.Height = vpHeight
 		}
 	case logMsg:
 		newEntry := parseLogLine(string(msg))
@@ -62,7 +65,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.logs = m.logs[1:]
 		}
 		m.vp.SetContent(m.getVisibleLogs())
-		m.vp.GotoBottom() // auto scroll bottom to see newest log
+		m.vp.GotoBottom()
 		return m, waitForLog(m.linesChan)
 	case tea.KeyMsg:
 		if m.isSearching {
@@ -102,31 +105,28 @@ func (m model) View() string {
 		return "\n Initializing...\n"
 	}
 
-	headerStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#00FFFF")).Bold(true)
 	header := headerStyle.Render("\n LogGlow-tui: Live Logs\n")
+	logsView := containerStyle.Width(m.vp.Width).Render(m.vp.View())
 
-	s := header
-	s += "--------------------\n"
-	s += m.vp.View()
-
-	s += "\n--------------------------------------------------------\n"
+	var footer string
 
 	if m.isSearching {
-		s += "\n Search: " + m.searchInput.View() + "\n"
-		s += lipgloss.NewStyle().Foreground(lipgloss.Color("241")).Render(" (Press Esc or Enter to exit search)")
+		search := searchBoxStyle.Render("🔍 " + m.searchInput.View())
+		help := helpStyle.Render(" (Press Esc or Enter to exit search)")
+		footer = "\n" + lipgloss.JoinHorizontal(lipgloss.Center, search, help)
 	} else {
-		s += " Press 'q' or 'ctrl+c' to quit.\n"
+		footer = "\n" + helpStyle.Render(" Press '/' to search • 'q' to quit")
 	}
-	return s
+	return lipgloss.JoinVertical(lipgloss.Left, header, logsView, footer)
 }
 
-func (m model) getVisibleLogs() string{
+func (m model) getVisibleLogs() string {
 	var visible []string
 	searchTerm := strings.ToLower(m.searchInput.Value())
-	for _, entry := range m.logs{
-		if(searchTerm==""||strings.Contains(strings.ToLower(entry.RawText),searchTerm)){
+	for _, entry := range m.logs {
+		if searchTerm == "" || strings.Contains(strings.ToLower(entry.RawText), searchTerm) {
 			visible = append(visible, styleLogLine(entry))
 		}
 	}
-	return strings.Join(visible,"\n")
+	return strings.Join(visible, "\n")
 }
