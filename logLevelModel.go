@@ -54,7 +54,7 @@ func (logLevel *LogLevel) handleKeyStroke(key string) bool{
 
 func (logLevel LogLevel) IsVisible(level string) bool{
 	switch level{
-	case "error", "fatel", "err":
+	case "error", "fatal", "err":
 		return logLevel.ShowError
 	case "info":
 		return logLevel.ShowInfo
