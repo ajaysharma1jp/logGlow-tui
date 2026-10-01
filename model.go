@@ -11,11 +11,14 @@ import (
 )
 
 type model struct {
-	LogLevel
+	LogLevel    
 	cancel       context.CancelFunc
-	linesChan    chan string // channel for logs
-	logs         []LogEntry  // list for logs
-	filteredLogs []LogEntry
+	linesChan    chan string 
+	
+	buffer       *LogBuffer  
+	
+	filteredLogs []LogEntry  
+	
 	ready        bool
 	vp           viewport.Model
 	isSearching  bool
@@ -130,16 +133,18 @@ func (m model) View() string {
 }
 
 func (m model) getVisibleLogs() string {
-	var visible []string
+	var builder string.Builder
 	searchTerm := strings.ToLower(m.searchInput.Value())
-	for _, entry := range m.logs {
-		if(!m.IsVisible(entry.Level)){
+	for i:=0; i<m.buffer.len(); i++{
+		entry := m.buffer.At(i)
+		if !m.IsVisible(entry.Level){
 			continue
 		}
-		
 		if searchTerm == "" || strings.Contains(strings.ToLower(entry.RawText), searchTerm) {
-			visible = append(visible, styleLogLine(entry))
+			// Write the styled string directly to the builder
+			builder.WriteString(styleLogLine(entry))
+			builder.WriteString("\n")
 		}
 	}
-	return strings.Join(visible, "\n")
+	return strings.TrimSuffix(builder.String(),"\n")
 }
