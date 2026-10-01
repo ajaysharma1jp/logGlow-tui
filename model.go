@@ -11,6 +11,7 @@ import (
 )
 
 type model struct {
+	LogLevel
 	cancel       context.CancelFunc
 	linesChan    chan string // channel for logs
 	logs         []LogEntry  // list for logs
@@ -27,6 +28,7 @@ func initialModel(c context.CancelFunc, ch chan string) model {
 	ti.CharLimit = 156
 	ti.Width = 40
 	return model{
+		LogLevel: NewLogLevel(),
 		cancel:      c,
 		linesChan:   ch,
 		logs:        []LogEntry{},
@@ -90,6 +92,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.isSearching = true
 				m.searchInput.Focus()
 				return m, nil // does not type '/' in searchbox while toggling it
+			
+			default:
+				if m.handleKeyStroke(msg.String()){
+					m.vp.SetContent(m.getVisibleLogs())
+					m.vp.GotoBottom()
+					return m, nil
+				}
 			}
 		}
 	}
@@ -124,6 +133,10 @@ func (m model) getVisibleLogs() string {
 	var visible []string
 	searchTerm := strings.ToLower(m.searchInput.Value())
 	for _, entry := range m.logs {
+		if(!m.IsVisible(entry.Level)){
+			continue
+		}
+		
 		if searchTerm == "" || strings.Contains(strings.ToLower(entry.RawText), searchTerm) {
 			visible = append(visible, styleLogLine(entry))
 		}
