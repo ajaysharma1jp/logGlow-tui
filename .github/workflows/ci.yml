@@ -14,5 +14,11 @@ jobs:
               with:
                 go-version: 'stable'
             
+            - name: Check Formatting 
+              uses: test -z "$(gofmt -l .)"
+
+            - name: Code Analysis (Vet)
+              uses: go vet ./...
+
             - name: Build app
               run: go build .
