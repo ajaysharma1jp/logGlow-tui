@@ -1,19 +1,18 @@
-name: Go CI
+name: Build
 
 on: [push, pull_request]
 
 jobs:
-    inspect-code:
-        runs-on: ubantu-latest
+    build-app:
+        runs-on: ubuntu-latest
         steps:
-          - name: Checkout code
-            uses: actions/checkout@v4
+            - name: Checkout code
+              uses: actions/checkout@v4
 
-          - name: Set up Go
-            uses: actions/setup-go@v5
-            with:
+            - name: Set up Go
+              uses: actions/setup-go@v5
+              with:
                 go-version: 'stable'
             
-          - name: Build App
-            run: go build .
-
+            - name: Build app
+              run: go build .
