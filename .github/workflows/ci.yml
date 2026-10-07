@@ -15,10 +15,10 @@ jobs:
                 go-version: 'stable'
             
             - name: Check Formatting 
-              uses: test -z "$(gofmt -l .)"
+              run: test -z "$(gofmt -l .)"
 
             - name: Code Analysis (Vet)
-              uses: go vet ./...
+              run: go vet ./...
 
             - name: Build app
               run: go build .
