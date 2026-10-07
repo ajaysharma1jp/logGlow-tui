@@ -16,7 +16,7 @@ func NewLogBuffer(capacity int) *LogBuffer{
 }
 
 func (buff *LogBuffer) Add(log LogEntry){
-	buff.entries[buffer.tail] = log
+	buff.entries[buff.tail] = log
 	buff.tail = (buff.tail+1)%buff.cap
 	if buff.count < buff.cap{
 		buff.count++

@@ -34,7 +34,7 @@ func initialModel(c context.CancelFunc, ch chan string) model {
 		LogLevel: NewLogLevel(),
 		cancel:      c,
 		linesChan:   ch,
-		logs:        []LogEntry{},
+		buffer:      NewLogBuffer(10000),
 		searchInput: ti,
 	}
 }
@@ -65,10 +65,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case logMsg:
 		newEntry := parseLogLine(string(msg))
-		m.logs = append(m.logs, newEntry)
-		if len(m.logs) > 10000 {
-			m.logs = m.logs[1:]
-		}
+		m.buffer.Add(newEntry)
 		m.vp.SetContent(m.getVisibleLogs())
 		m.vp.GotoBottom()
 		return m, waitForLog(m.linesChan)
@@ -133,9 +130,9 @@ func (m model) View() string {
 }
 
 func (m model) getVisibleLogs() string {
-	var builder string.Builder
+	var builder strings.Builder
 	searchTerm := strings.ToLower(m.searchInput.Value())
-	for i:=0; i<m.buffer.len(); i++{
+	for i:=0; i<m.buffer.Len(); i++{
 		entry := m.buffer.At(i)
 		if !m.IsVisible(entry.Level){
 			continue
