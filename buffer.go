@@ -9,6 +9,9 @@ type LogBuffer struct {
 }
 
 func NewLogBuffer(capacity int) *LogBuffer{
+	if capacity<=0 {
+		panic("log buffer capacity must be positive")
+	}
 	return &LogBuffer{
 		entries: make([]LogEntry, capacity),
 		cap: capacity,
