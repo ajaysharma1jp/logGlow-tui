@@ -11,11 +11,14 @@ import (
 )
 
 type model struct {
-	LogLevel
+	LogLevel    
 	cancel       context.CancelFunc
-	linesChan    chan string // channel for logs
-	logs         []LogEntry  // list for logs
-	filteredLogs []LogEntry
+	linesChan    chan string 
+	
+	buffer       *LogBuffer  
+	
+	filteredLogs []LogEntry  
+	
 	ready        bool
 	vp           viewport.Model
 	isSearching  bool
@@ -31,7 +34,7 @@ func initialModel(c context.CancelFunc, ch chan string) model {
 		LogLevel: NewLogLevel(),
 		cancel:      c,
 		linesChan:   ch,
-		logs:        []LogEntry{},
+		buffer:      NewLogBuffer(10000),
 		searchInput: ti,
 	}
 }
@@ -62,10 +65,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case logMsg:
 		newEntry := parseLogLine(string(msg))
-		m.logs = append(m.logs, newEntry)
-		if len(m.logs) > 10000 {
-			m.logs = m.logs[1:]
-		}
+		m.buffer.Add(newEntry)
 		m.vp.SetContent(m.getVisibleLogs())
 		m.vp.GotoBottom()
 		return m, waitForLog(m.linesChan)
@@ -130,16 +130,18 @@ func (m model) View() string {
 }
 
 func (m model) getVisibleLogs() string {
-	var visible []string
+	var builder strings.Builder
 	searchTerm := strings.ToLower(m.searchInput.Value())
-	for _, entry := range m.logs {
-		if(!m.IsVisible(entry.Level)){
+	for i:=0; i<m.buffer.Len(); i++{
+		entry := m.buffer.At(i)
+		if !m.IsVisible(entry.Level){
 			continue
 		}
-		
 		if searchTerm == "" || strings.Contains(strings.ToLower(entry.RawText), searchTerm) {
-			visible = append(visible, styleLogLine(entry))
+			// Write the styled string directly to the builder
+			builder.WriteString(styleLogLine(entry))
+			builder.WriteString("\n")
 		}
 	}
-	return strings.Join(visible, "\n")
+	return strings.TrimSuffix(builder.String(),"\n")
 }
