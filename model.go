@@ -11,18 +11,18 @@ import (
 )
 
 type model struct {
-	LogLevel    
-	cancel       context.CancelFunc
-	linesChan    chan string 
-	
-	buffer       *LogBuffer  
-	
-	filteredLogs []LogEntry  
-	
-	ready        bool
-	vp           viewport.Model
-	isSearching  bool
-	searchInput  textinput.Model
+	LogLevel
+	cancel    context.CancelFunc
+	linesChan chan string
+
+	buffer *LogBuffer
+
+	filteredLogs []LogEntry
+
+	ready       bool
+	vp          viewport.Model
+	isSearching bool
+	searchInput textinput.Model
 }
 
 func initialModel(c context.CancelFunc, ch chan string) model {
@@ -31,7 +31,7 @@ func initialModel(c context.CancelFunc, ch chan string) model {
 	ti.CharLimit = 156
 	ti.Width = 40
 	return model{
-		LogLevel: NewLogLevel(),
+		LogLevel:    NewLogLevel(),
 		cancel:      c,
 		linesChan:   ch,
 		buffer:      NewLogBuffer(10000),
@@ -92,9 +92,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.isSearching = true
 				m.searchInput.Focus()
 				return m, nil // does not type '/' in searchbox while toggling it
-			
+
 			default:
-				if m.handleKeyStroke(msg.String()){
+				if m.handleKeyStroke(msg.String()) {
 					m.vp.SetContent(m.getVisibleLogs())
 					m.vp.GotoBottom()
 					return m, nil
@@ -132,9 +132,9 @@ func (m model) View() string {
 func (m model) getVisibleLogs() string {
 	var builder strings.Builder
 	searchTerm := strings.ToLower(m.searchInput.Value())
-	for i:=0; i<m.buffer.Len(); i++{
+	for i := 0; i < m.buffer.Len(); i++ {
 		entry := m.buffer.At(i)
-		if !m.IsVisible(entry.Level){
+		if !m.IsVisible(entry.Level) {
 			continue
 		}
 		if searchTerm == "" || strings.Contains(strings.ToLower(entry.RawText), searchTerm) {
@@ -143,5 +143,5 @@ func (m model) getVisibleLogs() string {
 			builder.WriteString("\n")
 		}
 	}
-	return strings.TrimSuffix(builder.String(),"\n")
+	return strings.TrimSuffix(builder.String(), "\n")
 }
