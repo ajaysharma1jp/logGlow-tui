@@ -14,11 +14,10 @@ func ingest(ctx context.Context, reader io.Reader, outputChan chan<- string) err
 
 	scanner := bufio.NewScanner(reader)
 
-	
-	go func(){
-		select{
+	go func() {
+		select {
 		case <-ctx.Done():
-			if closer, ok := reader.(io.Closer); ok{
+			if closer, ok := reader.(io.Closer); ok {
 				closer.Close()
 			}
 		case <-done:
