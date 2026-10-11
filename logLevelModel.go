@@ -1,23 +1,23 @@
 package main
 
-type LogLevel struct{
-	ShowError 	bool
-	ShowInfo 	bool
+type LogLevel struct {
+	ShowError   bool
+	ShowInfo    bool
 	ShowWarning bool
-	ShowDebug 	bool
+	ShowDebug   bool
 }
 
-func NewLogLevel() LogLevel{
+func NewLogLevel() LogLevel {
 	return LogLevel{
-		ShowError: true,
-		ShowInfo: true,
+		ShowError:   true,
+		ShowInfo:    true,
 		ShowWarning: true,
-		ShowDebug: true,
+		ShowDebug:   true,
 	}
 }
 
-func (logLevel *LogLevel) handleKeyStroke(key string) bool{
-	switch key{
+func (logLevel *LogLevel) handleKeyStroke(key string) bool {
+	switch key {
 	case "e":
 		logLevel.ShowError = true
 		logLevel.ShowInfo = false
@@ -52,8 +52,8 @@ func (logLevel *LogLevel) handleKeyStroke(key string) bool{
 	return false
 }
 
-func (logLevel LogLevel) IsVisible(level string) bool{
-	switch level{
+func (logLevel LogLevel) IsVisible(level string) bool {
+	switch level {
 	case "error", "fatal", "err":
 		return logLevel.ShowError
 	case "info":

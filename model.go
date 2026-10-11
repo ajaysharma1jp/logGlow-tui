@@ -12,14 +12,17 @@ import (
 
 type model struct {
 	LogLevel
-	cancel       context.CancelFunc
-	linesChan    chan string // channel for logs
-	logs         []LogEntry  // list for logs
+	cancel    context.CancelFunc
+	linesChan chan string
+
+	buffer *LogBuffer
+
 	filteredLogs []LogEntry
-	ready        bool
-	vp           viewport.Model
-	isSearching  bool
-	searchInput  textinput.Model
+
+	ready       bool
+	vp          viewport.Model
+	isSearching bool
+	searchInput textinput.Model
 }
 
 func initialModel(c context.CancelFunc, ch chan string) model {
@@ -28,10 +31,10 @@ func initialModel(c context.CancelFunc, ch chan string) model {
 	ti.CharLimit = 156
 	ti.Width = 40
 	return model{
-		LogLevel: NewLogLevel(),
+		LogLevel:    NewLogLevel(),
 		cancel:      c,
 		linesChan:   ch,
-		logs:        []LogEntry{},
+		buffer:      NewLogBuffer(10000),
 		searchInput: ti,
 	}
 }
@@ -62,10 +65,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case logMsg:
 		newEntry := parseLogLine(string(msg))
-		m.logs = append(m.logs, newEntry)
-		if len(m.logs) > 10000 {
-			m.logs = m.logs[1:]
-		}
+		m.buffer.Add(newEntry)
 		m.vp.SetContent(m.getVisibleLogs())
 		m.vp.GotoBottom()
 		return m, waitForLog(m.linesChan)
@@ -92,9 +92,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.isSearching = true
 				m.searchInput.Focus()
 				return m, nil // does not type '/' in searchbox while toggling it
-			
+
 			default:
-				if m.handleKeyStroke(msg.String()){
+				if m.handleKeyStroke(msg.String()) {
 					m.vp.SetContent(m.getVisibleLogs())
 					m.vp.GotoBottom()
 					return m, nil
@@ -130,16 +130,18 @@ func (m model) View() string {
 }
 
 func (m model) getVisibleLogs() string {
-	var visible []string
+	var builder strings.Builder
 	searchTerm := strings.ToLower(m.searchInput.Value())
-	for _, entry := range m.logs {
-		if(!m.IsVisible(entry.Level)){
+	for i := 0; i < m.buffer.Len(); i++ {
+		entry := m.buffer.At(i)
+		if !m.IsVisible(entry.Level) {
 			continue
 		}
-		
 		if searchTerm == "" || strings.Contains(strings.ToLower(entry.RawText), searchTerm) {
-			visible = append(visible, styleLogLine(entry))
+			// Write the styled string directly to the builder
+			builder.WriteString(styleLogLine(entry))
+			builder.WriteString("\n")
 		}
 	}
-	return strings.Join(visible, "\n")
+	return strings.TrimSuffix(builder.String(), "\n")
 }
