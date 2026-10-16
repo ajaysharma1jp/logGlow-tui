@@ -10,6 +10,11 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
+type ViewState int const(
+	StateList ViewState = iota
+	StateDetail
+)
+
 type model struct {
 	LogLevel
 	cancel    context.CancelFunc
@@ -23,6 +28,10 @@ type model struct {
 	vp          viewport.Model
 	isSearching bool
 	searchInput textinput.Model
+
+	state       ViewState
+	cursor		int
+	detailVp	viewport.Model
 }
 
 func initialModel(c context.CancelFunc, ch chan string) model {
@@ -36,6 +45,7 @@ func initialModel(c context.CancelFunc, ch chan string) model {
 		linesChan:   ch,
 		buffer:      NewLogBuffer(10000),
 		searchInput: ti,
+		state:		 StateList,
 	}
 }
 
@@ -55,6 +65,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		vpWidth := max(0, msg.Width-borderOffset)
 		if !m.ready {
 			m.vp = viewport.New(vpWidth, vpHeight)
+			m.detailVp = viewport.New(vpWidth,vpHeight)
 			// restore those logs which arrived before screen was ready
 			m.vp.SetContent(m.getVisibleLogs())
 			m.vp.GotoBottom()
@@ -62,12 +73,15 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		} else {
 			m.vp.Width = vpWidth
 			m.vp.Height = vpHeight
+			m.detailVp.Width = vpWidth
+			m.detailVp.Height = vp.Height
 		}
 	case logMsg:
 		newEntry := parseLogLine(string(msg))
 		m.buffer.Add(newEntry)
-		m.vp.SetContent(m.getVisibleLogs())
-		m.vp.GotoBottom()
+		if m.state==StateList {
+			m.vp.SetContent(m.getVisibleLogs())
+		}
 		return m, waitForLog(m.linesChan)
 	case tea.KeyMsg:
 		if m.isSearching {
