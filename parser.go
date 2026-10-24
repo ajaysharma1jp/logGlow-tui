@@ -1,9 +1,9 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"strings"
-	"bytes"
 )
 
 type LogEntry struct {
@@ -13,21 +13,21 @@ type LogEntry struct {
 
 func parseLogLine(line string) LogEntry {
 	entry := LogEntry{RawText: line, Level: "unknown"}
-	
-	var partial struct{
+
+	var partial struct {
 		Level string `json:"level"`
 	}
 
-	if err := json.Unmarshal([]byte(line), &partial); err == nil && partial.Level!=""{
+	if err := json.Unmarshal([]byte(line), &partial); err == nil && partial.Level != "" {
 		entry.Level = strings.ToLower(partial.Level)
 	}
 	return entry
 }
 
-func formatJSON(raw string) string{
+func formatJSON(raw string) string {
 	var buf bytes.Buffer
 	err := json.Indent(&buf, []byte(raw), "", " ")
-	if err!=nil{
+	if err != nil {
 		return raw
 	}
 	return buf.String()

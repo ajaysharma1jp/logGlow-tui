@@ -10,9 +10,9 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-type ViewState int 
+type ViewState int
 
-const(
+const (
 	StateList ViewState = iota
 	StateDetail
 )
@@ -31,9 +31,9 @@ type model struct {
 	isSearching bool
 	searchInput textinput.Model
 
-	state       ViewState
-	cursor		int
-	detailVp	viewport.Model
+	state    ViewState
+	cursor   int
+	detailVp viewport.Model
 }
 
 func initialModel(c context.CancelFunc, ch chan string) model {
@@ -47,7 +47,7 @@ func initialModel(c context.CancelFunc, ch chan string) model {
 		linesChan:   ch,
 		buffer:      NewLogBuffer(10000),
 		searchInput: ti,
-		state:		 StateList,
+		state:       StateList,
 	}
 }
 
@@ -67,7 +67,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		vpWidth := max(0, msg.Width-borderOffset)
 		if !m.ready {
 			m.vp = viewport.New(vpWidth, vpHeight)
-			m.detailVp = viewport.New(vpWidth,vpHeight)
+			m.detailVp = viewport.New(vpWidth, vpHeight)
 			// restore those logs which arrived before screen was ready
 			m.vp.SetContent(m.getVisibleLogs())
 			m.vp.GotoBottom()
@@ -81,7 +81,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case logMsg:
 		newEntry := parseLogLine(string(msg))
 		m.buffer.Add(newEntry)
-		if m.state==StateList {
+		if m.state == StateList {
 			m.vp.SetContent(m.getVisibleLogs())
 		}
 		return m, waitForLog(m.linesChan)
@@ -100,31 +100,31 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		} else {
 			switch msg.String() {
 			case "up", "k":
-			    if m.state == StateList && m.cursor > 0 {
-			        m.cursor--        
-			        if m.cursor < m.vp.YOffset {
-			            m.vp.LineUp(1)
-			        }
-    		    	m.vp.SetContent(m.getVisibleLogs())
-    			}
-    			return m, nil
+				if m.state == StateList && m.cursor > 0 {
+					m.cursor--
+					if m.cursor < m.vp.YOffset {
+						m.vp.LineUp(1)
+					}
+					m.vp.SetContent(m.getVisibleLogs())
+				}
+				return m, nil
 
 			case "down", "j":
-			    if m.state == StateList {
-			        filtered := m.getFilteredLogs()
-			        if m.cursor < len(filtered)-1 {
-			            m.cursor++
-			            if m.cursor >= m.vp.YOffset+m.vp.Height {
-			                m.vp.LineDown(1)
-			            }
-			            m.vp.SetContent(m.getVisibleLogs())
-			        }
-			    }
-			    return m, nil
-			case "enter":
-				if m.state == StateList{
+				if m.state == StateList {
 					filtered := m.getFilteredLogs()
-					if len(filtered)>0{
+					if m.cursor < len(filtered)-1 {
+						m.cursor++
+						if m.cursor >= m.vp.YOffset+m.vp.Height {
+							m.vp.LineDown(1)
+						}
+						m.vp.SetContent(m.getVisibleLogs())
+					}
+				}
+				return m, nil
+			case "enter":
+				if m.state == StateList {
+					filtered := m.getFilteredLogs()
+					if len(filtered) > 0 {
 						m.state = StateDetail
 						selectedLog := filtered[m.cursor]
 						formattedText := formatJSON(selectedLog.RawText)
@@ -134,11 +134,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				return m, nil
 			case "esc":
-				if m.state == StateDetail{
+				if m.state == StateDetail {
 					m.state = StateList
 					m.vp.SetContent(m.getVisibleLogs())
 				}
-				return m,nil
+				return m, nil
 			case "ctrl+c", "q":
 				if m.cancel != nil {
 					m.cancel()
@@ -159,9 +159,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 
-	if m.state == StateDetail{
+	if m.state == StateDetail {
 		m.detailVp, cmd = m.detailVp.Update(msg)
-	}else{
+	} else {
 		m.vp, cmd = m.vp.Update(msg)
 	}
 	cmds = append(cmds, cmd)
@@ -177,10 +177,10 @@ func (m model) View() string {
 	var currentView string
 	if m.state == StateDetail {
 		currentView = m.detailVp.View()
-	}else{
+	} else {
 		currentView = m.vp.View()
 	}
-	
+
 	logsView := containerStyle.Width(m.vp.Width).Render(currentView)
 
 	var footer string
@@ -198,36 +198,36 @@ func (m model) View() string {
 func (m *model) getVisibleLogs() string {
 	var builder strings.Builder
 	filtered := m.getFilteredLogs()
-	if len(filtered)>0 && m.cursor>=len(filtered){
-		m.cursor = len(filtered)-1
-	}else if len(filtered) == 0{
+	if len(filtered) > 0 && m.cursor >= len(filtered) {
+		m.cursor = len(filtered) - 1
+	} else if len(filtered) == 0 {
 		m.cursor = 0
 	}
 
-	for i, entry := range filtered{
+	for i, entry := range filtered {
 		line := styleLogLine(entry)
-		if i==m.cursor && m.state == StateList{
+		if i == m.cursor && m.state == StateList {
 			builder.WriteString(" > ")
 			builder.WriteString(line)
-		}else{
+		} else {
 			builder.WriteString(" ")
 			builder.WriteString(line)
 		}
 		builder.WriteString("\n")
 	}
-	return strings.TrimSuffix(builder.String(),"\n")
+	return strings.TrimSuffix(builder.String(), "\n")
 }
 
-func (m model) getFilteredLogs() []LogEntry{
+func (m model) getFilteredLogs() []LogEntry {
 	var filtered []LogEntry
 	searchTerm := strings.ToLower(m.searchInput.Value())
-	for i:=0; i<m.buffer.Len(); i++{
+	for i := 0; i < m.buffer.Len(); i++ {
 		entry := m.buffer.At(i)
-		if !m.IsVisible(entry.Level){
+		if !m.IsVisible(entry.Level) {
 			continue
 		}
-		if searchTerm == "" || strings.Contains(strings.ToLower(entry.RawText),searchTerm){
-			filtered = append(filtered,entry)
+		if searchTerm == "" || strings.Contains(strings.ToLower(entry.RawText), searchTerm) {
+			filtered = append(filtered, entry)
 		}
 	}
 	return filtered
