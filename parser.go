@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"strings"
+	"bytes"
 )
 
 type LogEntry struct {
@@ -18,7 +19,7 @@ func parseLogLine(line string) LogEntry {
 	}
 
 	if err := json.Unmarshal([]byte(line), &partial); err == nil && partial.Level!=""{
-		entry.Level = strings.ToLower(partial.level)
+		entry.Level = strings.ToLower(partial.Level)
 	}
 	return entry
 }

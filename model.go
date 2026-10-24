@@ -74,7 +74,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.vp.Width = vpWidth
 			m.vp.Height = vpHeight
 			m.detailVp.Width = vpWidth
-			m.detailVp.Height = vp.Height
+			m.detailVp.Height = vpHeight
 		}
 	case logMsg:
 		newEntry := parseLogLine(string(msg))
@@ -97,6 +97,25 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		} else {
 			switch msg.String() {
+			case "up","k":
+				if m.state==StateList && m.cursor>0{
+					m.cursor--
+				}
+			case "down","j":
+				// need a way to check max buffer length here
+				if m.state==StateList{
+					m.cursor++
+				}
+			case "enter":
+				if m.state == StateList{
+					m.state = StateDetail
+					// TODO: Get the log at m.cursor, format it with formatJSON(), 
+        			// and send it to m.detailVp.SetContent()
+				}
+			case "esc":
+				if m.state == StateList{
+					m.state = StateList
+				}
 			case "ctrl+c", "q":
 				if m.cancel != nil {
 					m.cancel()
@@ -129,6 +148,13 @@ func (m model) View() string {
 	}
 
 	header := headerStyle.Render("\n LogGlow-tui: Live Logs\n")
+	var currentView string
+	if m.state == StateDetail {
+		currentView = m.detailVp.View()
+	}else{
+		currentView = m.vp.View()
+	}
+	
 	logsView := containerStyle.Width(m.vp.Width).Render(m.vp.View())
 
 	var footer string
