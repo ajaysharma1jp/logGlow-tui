@@ -10,7 +10,9 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-type ViewState int const(
+type ViewState int 
+
+const(
 	StateList ViewState = iota
 	StateDetail
 )
@@ -100,22 +102,36 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "up","k":
 				if m.state==StateList && m.cursor>0{
 					m.cursor--
+					m.vp.SetContent(m.getVisibleLogs())
 				}
+				return m, nil
 			case "down","j":
-				// need a way to check max buffer length here
 				if m.state==StateList{
-					m.cursor++
+					filtered := m.getFilteredLogs()
+					if m.cursor < len(filtered)-1{
+						m.cursor++
+						m.vp.SetContent(m.getVisibleLogs())
+					}
 				}
+				return m, nil
 			case "enter":
 				if m.state == StateList{
-					m.state = StateDetail
-					// TODO: Get the log at m.cursor, format it with formatJSON(), 
-        			// and send it to m.detailVp.SetContent()
+					filtered := m.getFilteredLogs()
+					if len(filtered)>0{
+						m.state = StateDetail
+						selectedLog := filtered[m.cursor]
+						formattedText := formatJSON(selectedLog.RawText)
+						m.detailVp.SetContent(formattedText)
+						m.detailVp.GoToTop()
+					}
 				}
+				return m, nil
 			case "esc":
-				if m.state == StateList{
+				if m.state == StateDetail{
 					m.state = StateList
+					m.vp.SetContent(m.getVisibleLogs())
 				}
+				return m,nil
 			case "ctrl+c", "q":
 				if m.cancel != nil {
 					m.cancel()
@@ -136,8 +152,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 
-	// for message wasn't 'q' or log(like arrow keys or mouse scrolls) give it to vp for handling scrolling
-	m.vp, cmd = m.vp.Update(msg)
+	if m.state == StateDetail{
+		m.detailVp, cmd = m.detailVp.Update(msg)
+	}else{
+		m.vp, cmd = m.vp.Update(msg)
+	}
 	cmds = append(cmds, cmd)
 	return m, tea.Batch(cmds...)
 }
@@ -155,7 +174,7 @@ func (m model) View() string {
 		currentView = m.vp.View()
 	}
 	
-	logsView := containerStyle.Width(m.vp.Width).Render(m.vp.View())
+	logsView := containerStyle.Width(m.vp.Width).Render(currentView)
 
 	var footer string
 
@@ -169,19 +188,40 @@ func (m model) View() string {
 	return lipgloss.JoinVertical(lipgloss.Left, header, logsView, footer)
 }
 
-func (m model) getVisibleLogs() string {
+func (m *model) getVisibleLogs() string {
 	var builder strings.Builder
+	filtered := m.getFilteredLogs()
+	if len(filtered)>0 && m.cursor>=len(filtered){
+		m.cursor = len(filtered)-1
+	}else if len(filtered) == 0{
+		m.cursor = 0
+	}
+
+	for i, entry := range filtered{
+		line := styleLogLine(entry)
+		if i==m.cursor && m.state == StateList{
+			builder.WriteString(" > ")
+			builder.WriteString(line)
+		}else{
+			builder.WriteString(" ")
+			builder.WriteString(line)
+		}
+		builder.WriteString("\n")
+	}
+	return strings.TrimSuffix(builder.String(),"\n")
+}
+
+func (m model) getFilteredLogs() []LogEntry{
+	var filtered []LogEntry
 	searchTerm := strings.ToLower(m.searchInput.Value())
-	for i := 0; i < m.buffer.Len(); i++ {
+	for i:=0; i<m.buffer.Len(); i++{
 		entry := m.buffer.At(i)
-		if !m.IsVisible(entry.Level) {
+		if !m.IsVisible(entry.Level){
 			continue
 		}
-		if searchTerm == "" || strings.Contains(strings.ToLower(entry.RawText), searchTerm) {
-			// Write the styled string directly to the builder
-			builder.WriteString(styleLogLine(entry))
-			builder.WriteString("\n")
+		if searchTerm == "" || strings.Contains(strings.ToLower(entry.RawText),searchTerm){
+			filtered = append(filtered,entry)
 		}
 	}
-	return strings.TrimSuffix(builder.String(), "\n")
+	return filtered
 }
