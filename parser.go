@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"strings"
 )
@@ -12,15 +13,24 @@ type LogEntry struct {
 
 func parseLogLine(line string) LogEntry {
 	entry := LogEntry{RawText: line, Level: "unknown"}
-	var logData map[string]interface{}
-	if err := json.Unmarshal([]byte(line), &logData); err == nil {
-		if levelVal, exists := logData["level"]; exists {
-			if levelStr, ok := levelVal.(string); ok {
-				entry.Level = strings.ToLower(levelStr)
-			}
-		}
+
+	var partial struct {
+		Level string `json:"level"`
+	}
+
+	if err := json.Unmarshal([]byte(line), &partial); err == nil && partial.Level != "" {
+		entry.Level = strings.ToLower(partial.Level)
 	}
 	return entry
+}
+
+func formatJSON(raw string) string {
+	var buf bytes.Buffer
+	err := json.Indent(&buf, []byte(raw), "", " ")
+	if err != nil {
+		return raw
+	}
+	return buf.String()
 }
 
 func styleLogLine(entry LogEntry) string {

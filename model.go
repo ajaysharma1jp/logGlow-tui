@@ -10,6 +10,13 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
+type ViewState int
+
+const (
+	StateList ViewState = iota
+	StateDetail
+)
+
 type model struct {
 	LogLevel
 	cancel    context.CancelFunc
@@ -23,6 +30,10 @@ type model struct {
 	vp          viewport.Model
 	isSearching bool
 	searchInput textinput.Model
+
+	state    ViewState
+	cursor   int
+	detailVp viewport.Model
 }
 
 func initialModel(c context.CancelFunc, ch chan string) model {
@@ -36,6 +47,7 @@ func initialModel(c context.CancelFunc, ch chan string) model {
 		linesChan:   ch,
 		buffer:      NewLogBuffer(10000),
 		searchInput: ti,
+		state:       StateList,
 	}
 }
 
@@ -55,6 +67,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		vpWidth := max(0, msg.Width-borderOffset)
 		if !m.ready {
 			m.vp = viewport.New(vpWidth, vpHeight)
+			m.detailVp = viewport.New(vpWidth, vpHeight)
 			// restore those logs which arrived before screen was ready
 			m.vp.SetContent(m.getVisibleLogs())
 			m.vp.GotoBottom()
@@ -62,12 +75,15 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		} else {
 			m.vp.Width = vpWidth
 			m.vp.Height = vpHeight
+			m.detailVp.Width = vpWidth
+			m.detailVp.Height = vpHeight
 		}
 	case logMsg:
 		newEntry := parseLogLine(string(msg))
 		m.buffer.Add(newEntry)
-		m.vp.SetContent(m.getVisibleLogs())
-		m.vp.GotoBottom()
+		if m.state == StateList {
+			m.vp.SetContent(m.getVisibleLogs())
+		}
 		return m, waitForLog(m.linesChan)
 	case tea.KeyMsg:
 		if m.isSearching {
@@ -83,6 +99,46 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		} else {
 			switch msg.String() {
+			case "up", "k":
+				if m.state == StateList && m.cursor > 0 {
+					m.cursor--
+					if m.cursor < m.vp.YOffset {
+						m.vp.LineUp(1)
+					}
+					m.vp.SetContent(m.getVisibleLogs())
+				}
+				return m, nil
+
+			case "down", "j":
+				if m.state == StateList {
+					filtered := m.getFilteredLogs()
+					if m.cursor < len(filtered)-1 {
+						m.cursor++
+						if m.cursor >= m.vp.YOffset+m.vp.Height {
+							m.vp.LineDown(1)
+						}
+						m.vp.SetContent(m.getVisibleLogs())
+					}
+				}
+				return m, nil
+			case "enter":
+				if m.state == StateList {
+					filtered := m.getFilteredLogs()
+					if len(filtered) > 0 {
+						m.state = StateDetail
+						selectedLog := filtered[m.cursor]
+						formattedText := formatJSON(selectedLog.RawText)
+						m.detailVp.SetContent(formattedText)
+						m.detailVp.GotoTop()
+					}
+				}
+				return m, nil
+			case "esc":
+				if m.state == StateDetail {
+					m.state = StateList
+					m.vp.SetContent(m.getVisibleLogs())
+				}
+				return m, nil
 			case "ctrl+c", "q":
 				if m.cancel != nil {
 					m.cancel()
@@ -103,8 +159,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 
-	// for message wasn't 'q' or log(like arrow keys or mouse scrolls) give it to vp for handling scrolling
-	m.vp, cmd = m.vp.Update(msg)
+	if m.state == StateDetail {
+		m.detailVp, cmd = m.detailVp.Update(msg)
+	} else {
+		m.vp, cmd = m.vp.Update(msg)
+	}
 	cmds = append(cmds, cmd)
 	return m, tea.Batch(cmds...)
 }
@@ -115,7 +174,14 @@ func (m model) View() string {
 	}
 
 	header := headerStyle.Render("\n LogGlow-tui: Live Logs\n")
-	logsView := containerStyle.Width(m.vp.Width).Render(m.vp.View())
+	var currentView string
+	if m.state == StateDetail {
+		currentView = m.detailVp.View()
+	} else {
+		currentView = m.vp.View()
+	}
+
+	logsView := containerStyle.Width(m.vp.Width).Render(currentView)
 
 	var footer string
 
@@ -129,8 +195,31 @@ func (m model) View() string {
 	return lipgloss.JoinVertical(lipgloss.Left, header, logsView, footer)
 }
 
-func (m model) getVisibleLogs() string {
+func (m *model) getVisibleLogs() string {
 	var builder strings.Builder
+	filtered := m.getFilteredLogs()
+	if len(filtered) > 0 && m.cursor >= len(filtered) {
+		m.cursor = len(filtered) - 1
+	} else if len(filtered) == 0 {
+		m.cursor = 0
+	}
+
+	for i, entry := range filtered {
+		line := styleLogLine(entry)
+		if i == m.cursor && m.state == StateList {
+			builder.WriteString(" > ")
+			builder.WriteString(line)
+		} else {
+			builder.WriteString(" ")
+			builder.WriteString(line)
+		}
+		builder.WriteString("\n")
+	}
+	return strings.TrimSuffix(builder.String(), "\n")
+}
+
+func (m model) getFilteredLogs() []LogEntry {
+	var filtered []LogEntry
 	searchTerm := strings.ToLower(m.searchInput.Value())
 	for i := 0; i < m.buffer.Len(); i++ {
 		entry := m.buffer.At(i)
@@ -138,10 +227,8 @@ func (m model) getVisibleLogs() string {
 			continue
 		}
 		if searchTerm == "" || strings.Contains(strings.ToLower(entry.RawText), searchTerm) {
-			// Write the styled string directly to the builder
-			builder.WriteString(styleLogLine(entry))
-			builder.WriteString("\n")
+			filtered = append(filtered, entry)
 		}
 	}
-	return strings.TrimSuffix(builder.String(), "\n")
+	return filtered
 }
