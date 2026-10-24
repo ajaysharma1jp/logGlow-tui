@@ -99,21 +99,28 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		} else {
 			switch msg.String() {
-			case "up","k":
-				if m.state==StateList && m.cursor>0{
-					m.cursor--
-					m.vp.SetContent(m.getVisibleLogs())
-				}
-				return m, nil
-			case "down","j":
-				if m.state==StateList{
-					filtered := m.getFilteredLogs()
-					if m.cursor < len(filtered)-1{
-						m.cursor++
-						m.vp.SetContent(m.getVisibleLogs())
-					}
-				}
-				return m, nil
+			case "up", "k":
+			    if m.state == StateList && m.cursor > 0 {
+			        m.cursor--        
+			        if m.cursor < m.vp.YOffset {
+			            m.vp.LineUp(1)
+			        }
+    		    	m.vp.SetContent(m.getVisibleLogs())
+    			}
+    			return m, nil
+
+			case "down", "j":
+			    if m.state == StateList {
+			        filtered := m.getFilteredLogs()
+			        if m.cursor < len(filtered)-1 {
+			            m.cursor++
+			            if m.cursor >= m.vp.YOffset+m.vp.Height {
+			                m.vp.LineDown(1)
+			            }
+			            m.vp.SetContent(m.getVisibleLogs())
+			        }
+			    }
+			    return m, nil
 			case "enter":
 				if m.state == StateList{
 					filtered := m.getFilteredLogs()
@@ -122,7 +129,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						selectedLog := filtered[m.cursor]
 						formattedText := formatJSON(selectedLog.RawText)
 						m.detailVp.SetContent(formattedText)
-						m.detailVp.GoToTop()
+						m.detailVp.GotoTop()
 					}
 				}
 				return m, nil
